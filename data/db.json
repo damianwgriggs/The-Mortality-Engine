@@ -8,3 +8,13 @@
     "status": "alive"
   }
 ]
+[
+  {
+    "id": "test_memory_001",
+    "content": "This is a test of the mortality engine. If you can read this, the entropy is low.",
+    "type": "text",
+    "entropy": 10,
+    "last_healed_ts": 1704870000,
+    "status": "alive"
+  }
+]

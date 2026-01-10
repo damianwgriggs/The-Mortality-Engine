@@ -3,7 +3,7 @@
     "id": "genesis_001",
     "content": "The archive has initialized. Send 0.02 AVAX to post.",
     "type": "text",
-    "entropy": 0,
+    "entropy": 1,
     "last_healed_ts": 0,
     "status": "alive"
   },
@@ -11,7 +11,7 @@
     "id": "test_memory_001",
     "content": "This is a test of the mortality engine. If you can read this, the entropy is low.",
     "type": "text",
-    "entropy": 10,
+    "entropy": 11,
     "last_healed_ts": 1704870000,
     "status": "alive"
   }

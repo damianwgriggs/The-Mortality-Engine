@@ -7,8 +7,9 @@ from datetime import datetime
 
 # --- CONFIGURATION ---
 DB_PATH = 'data/db.json'
-WALLET_ADDRESS = "0x52dffcd5a5e817d6f2529d77b48ab63c9b2a1e4e"
-SNOWTRACE_API_KEY = os.environ.get('SNOWTRACE_API_KEY') 
+# Your OLD wallet (The Treasury) that receives the funds
+WALLET_ADDRESS = "0x43CAF8c948235Ed5e08608D5A7642910E3f82Fb9" 
+SNOWTRACE_API_KEY = os.environ.get('SNOWTRACE_API_KEY') # Optional
 
 # Game Rules
 COST_POST = 0.02 # AVAX 
@@ -19,20 +20,26 @@ MAX_ENTROPY = 24
 # --- UTILS ---
 
 def load_db():
+    # Strict loading to prevent JSON errors
     try:
+        if not os.path.exists(DB_PATH):
+            return []
         with open(DB_PATH, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
+            content = f.read().strip()
+            if not content:
+                return []
+            return json.loads(content)
+    except json.JSONDecodeError:
+        print("Error: DB Corrupted. Resetting.")
         return []
 
 def save_db(data):
-    # Ensure directory exists
+    # Overwrite mode 'w' guarantees valid JSON structure
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with open(DB_PATH, 'w') as f:
         json.dump(data, f, indent=2)
 
 def decode_input_data(input_hex):
-    """Decodes the transaction input data (Hex -> Text)."""
     if not input_hex or input_hex == '0x':
         return None
     try:
@@ -41,10 +48,11 @@ def decode_input_data(input_hex):
         return None
 
 def fetch_transactions():
-    """Fetches normal transactions for the wallet from Snowtrace."""
-    print(f"Fetching transactions for {WALLET_ADDRESS}...")
+    """Fetches transactions from FUJI Snowtrace."""
+    print(f"Fetching transactions for {WALLET_ADDRESS} on Fuji...")
     
-    url = "https://api.snowtrace.io/api"
+    # NOTE: Using api-testnet.snowtrace.io
+    url = "https://api-testnet.snowtrace.io/api"
     params = {
         "module": "account",
         "action": "txlist",
@@ -67,7 +75,7 @@ def fetch_transactions():
         if data['status'] == '1':
             return data['result']
         else:
-            print(f"API Error/Info: {data.get('message')}")
+            print(f"API Info: {data.get('message', 'No result')}")
             return []
     except Exception as e:
         print(f"Network Error: {e}")

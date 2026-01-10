@@ -1,14 +1,12 @@
 [
   {
-    "id": "genesis_post",
-    "content": "This is the first memory. It will rot if you do not sustain it.",
+    "id": "genesis_001",
+    "content": "The archive has initialized. Send 0.02 AVAX to post.",
     "type": "text",
     "entropy": 0,
-    "last_healed": "2023-10-27T10:00:00",
+    "last_healed_ts": 0,
     "status": "alive"
-  }
-]
-[
+  },
   {
     "id": "test_memory_001",
     "content": "This is a test of the mortality engine. If you can read this, the entropy is low.",

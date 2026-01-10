@@ -3,20 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE MORTALITY ENGINE (FUJI MODE)</title>
+    <title>THE MORTALITY ENGINE (FUJI)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
-        body { background-color: #050505; color: #39ff14; font-family: 'Courier Prime', monospace; }
+        
+        body { 
+            background-color: #050505; 
+            color: #39ff14; 
+            font-family: 'Courier Prime', monospace; 
+        }
+
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #111; }
         ::-webkit-scrollbar-thumb { background: #333; }
         ::-webkit-scrollbar-thumb:hover { background: #39ff14; }
+
+        /* Cyberpunk UI Elements */
         .term-border { border: 1px solid #333; }
-        .btn-cyber { background: #000; border: 1px solid #39ff14; color: #39ff14; text-transform: uppercase; font-weight: bold; transition: all 0.2s; }
+        .term-border:hover { border-color: #39ff14; }
+        .btn-cyber { 
+            background: #000; border: 1px solid #39ff14; color: #39ff14; 
+            text-transform: uppercase; font-weight: bold; transition: all 0.2s;
+        }
         .btn-cyber:hover:not(:disabled) { background: #39ff14; color: #000; box-shadow: 0 0 10px #39ff14; }
         .btn-cyber:disabled { border-color: #555; color: #555; cursor: not-allowed; }
+        
+        /* Decay Filters */
         .decay-1 { filter: blur(1px) grayscale(50%); opacity: 0.9; }
         .decay-2 { filter: blur(3px) contrast(150%) hue-rotate(45deg); opacity: 0.7; }
         .decay-3 { filter: blur(6px) invert(100%); opacity: 0.4; }
@@ -27,7 +42,7 @@
 
     <div class="w-full max-w-6xl mb-8 flex flex-col md:flex-row justify-between items-center border-b-2 border-[#39ff14] pb-4">
         <div>
-            <h1 class="text-3xl font-bold tracking-tighter">> MORTALITY_ENGINE <span class="text-xs align-top text-yellow-400">[FUJI TESTNET]</span></h1>
+            <h1 class="text-3xl font-bold tracking-tighter">> MORTALITY_ENGINE <span class="text-xs text-yellow-400">[FUJI TESTNET]</span></h1>
             <p class="text-xs text-gray-500 mt-1">STATUS: <span class="animate-pulse text-red-500">DECAYING</span></p>
         </div>
         <div id="wallet-section" class="mt-4 md:mt-0 text-right">
@@ -40,7 +55,8 @@
         <div class="flex flex-col gap-4">
             <label class="text-sm text-gray-400">> UPLOAD MEMORY (COST: 0.02 AVAX)</label>
             <div class="flex flex-col md:flex-row gap-4">
-                <input type="text" id="postContent" placeholder="Enter text or Image URL..." class="flex-grow bg-black border border-[#555] text-white p-3 focus:outline-none focus:border-[#39ff14] font-mono">
+                <input type="text" id="postContent" placeholder="Enter text or Image URL..." 
+                    class="flex-grow bg-black border border-[#555] text-white p-3 focus:outline-none focus:border-[#39ff14] font-mono">
                 <button id="postButton" class="btn-cyber px-8 py-3 disabled:opacity-50">INITIATE UPLOAD</button>
             </div>
             <div id="statusMessage" class="text-xs min-h-[20px] text-gray-400"></div>
@@ -48,12 +64,13 @@
     </div>
 
     <div id="gallery" class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="text-center col-span-full py-20 text-gray-600 animate-pulse">> SYNCING WITH ENTROPY...</div>
+        <div class="col-span-full text-center py-20 text-gray-600 animate-pulse">> SYNCING WITH ENTROPY...</div>
     </div>
 
     <script>
         // --- CONFIGURATION (FUJI TESTNET) ---
-        const RECIPIENT_ADDRESS = "0x52dffcd5a5e817d6f2529d77b48ab63c9b2a1e4e"; 
+        // Using your old AI Researcher wallet as recipient to avoid "Send to Self" error
+        const RECIPIENT_ADDRESS = "0x43CAF8c948235Ed5e08608D5A7642910E3f82Fb9"; 
         const AVALANCHE_CHAIN_ID = '0xa869'; // Fuji Testnet ID
         const AVALANCHE_RPC_URL = 'https://api.avax-test.network/ext/bc/C/rpc';
         
@@ -72,6 +89,7 @@
         connectBtn.addEventListener('click', connectWallet);
         postBtn.addEventListener('click', () => makeTransaction('post'));
 
+        // --- WALLET FUNCTIONS ---
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') return updateStatus('MetaMask not installed.', true);
             try {
@@ -95,6 +113,7 @@
                 connectBtn.disabled = true;
                 addressDisplay.innerText = `USER: ${currentAccount.substring(0, 6)}...`;
                 addressDisplay.classList.remove('hidden');
+                
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
                 updateStatus('System Online. Ready for Input.', false);
@@ -138,7 +157,7 @@
             
             // SECURITY CHECK: PREVENT SELF-TRANSFER
             if (currentAccount.toLowerCase() === RECIPIENT_ADDRESS.toLowerCase()) {
-                return updateStatus("ERROR: You are logged in as the Treasury. Switch to a different 'Tester' account in MetaMask.", true);
+                return updateStatus("ERROR: You are logged in as the Treasury. Use a different account.", true);
             }
 
             let valueEth, dataHex;
@@ -161,7 +180,7 @@
                     data: dataHex
                 };
                 const txResponse = await signer.sendTransaction(txParams);
-                updateStatus(`Signal Sent! TX: ${txResponse.hash.substring(0,10)}...`, false);
+                updateStatus(`Signal Sent! TX: ${txResponse.hash.substring(0,10)}... (Wait for cycle)`, false);
                 if(type === 'post') postInput.value = '';
             } catch (error) {
                 console.error(error);
@@ -198,6 +217,7 @@
                 data.reverse().forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'term-border p-4 bg-[#0a0a0a] relative overflow-hidden transition-all duration-300';
+                    
                     let cssClass = '';
                     if (item.entropy > 5) cssClass = 'decay-1';
                     if (item.entropy > 12) cssClass = 'decay-2';

@@ -21,7 +21,7 @@
         ::-webkit-scrollbar-thumb { background: #333; }
         ::-webkit-scrollbar-thumb:hover { background: #39ff14; }
 
-        /* Cyberpunk UI Elements */
+        /* UI Elements */
         .term-border { border: 1px solid #333; }
         .term-border:hover { border-color: #39ff14; }
         .btn-cyber { 
@@ -36,11 +36,18 @@
         .decay-2 { filter: blur(3px) contrast(150%) hue-rotate(45deg); opacity: 0.7; }
         .decay-3 { filter: blur(6px) invert(100%); opacity: 0.4; }
         .dead { border: 1px solid #ff003c; color: #ff003c; text-decoration: line-through; }
+
+        /* Disclaimer Box */
+        .system-notice {
+            background: rgba(255, 180, 0, 0.1);
+            border: 1px solid #ffb400;
+            color: #ffb400;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4">
 
-    <div class="w-full max-w-6xl mb-8 flex flex-col md:flex-row justify-between items-center border-b-2 border-[#39ff14] pb-4">
+    <div class="w-full max-w-6xl mb-4 flex flex-col md:flex-row justify-between items-center border-b-2 border-[#39ff14] pb-4">
         <div>
             <h1 class="text-3xl font-bold tracking-tighter">> MORTALITY_ENGINE <span class="text-xs text-yellow-400">[FUJI TESTNET]</span></h1>
             <p class="text-xs text-gray-500 mt-1">STATUS: <span class="animate-pulse text-red-500">DECAYING</span></p>
@@ -51,9 +58,19 @@
         </div>
     </div>
 
+    <div class="w-full max-w-6xl mb-8 p-4 system-notice text-xs md:text-sm font-mono leading-relaxed">
+        <strong class="block mb-1">> SYSTEM PROTOCOLS:</strong>
+        <ul class="list-disc pl-5 space-y-1">
+            <li><strong>NETWORK:</strong> Operates exclusively on <strong>Avalanche Fuji Testnet</strong>.</li>
+            <li><strong>COSTS:</strong> UPLOAD = 0.02 AVAX | HEAL = 0.01 AVAX.</li>
+            <li><strong>LATENCY:</strong> The engine cycles hourly. <strong>Uploads and Heals go live at minute :00 of every hour.</strong></li>
+            <li><strong>WARNING:</strong> Content ignored by the community will rot and eventually be deleted.</li>
+        </ul>
+    </div>
+
     <div class="w-full max-w-6xl mb-12 p-6 bg-[#0a0a0a] border border-[#333]">
         <div class="flex flex-col gap-4">
-            <label class="text-sm text-gray-400">> UPLOAD MEMORY (COST: 0.02 AVAX)</label>
+            <label class="text-sm text-gray-400">> UPLOAD MEMORY</label>
             <div class="flex flex-col md:flex-row gap-4">
                 <input type="text" id="postContent" placeholder="Enter text or Image URL..." 
                     class="flex-grow bg-black border border-[#555] text-white p-3 focus:outline-none focus:border-[#39ff14] font-mono">
@@ -69,7 +86,6 @@
 
     <script>
         // --- CONFIGURATION (FUJI TESTNET) ---
-        // Using your old AI Researcher wallet as recipient to avoid "Send to Self" error
         const RECIPIENT_ADDRESS = "0x43CAF8c948235Ed5e08608D5A7642910E3f82Fb9"; 
         const AVALANCHE_CHAIN_ID = '0xa869'; // Fuji Testnet ID
         const AVALANCHE_RPC_URL = 'https://api.avax-test.network/ext/bc/C/rpc';
@@ -180,7 +196,7 @@
                     data: dataHex
                 };
                 const txResponse = await signer.sendTransaction(txParams);
-                updateStatus(`Signal Sent! TX: ${txResponse.hash.substring(0,10)}... (Wait for cycle)`, false);
+                updateStatus(`Signal Sent! TX: ${txResponse.hash.substring(0,10)}... (Awaiting hourly sync)`, false);
                 if(type === 'post') postInput.value = '';
             } catch (error) {
                 console.error(error);

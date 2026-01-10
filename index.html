@@ -4,18 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>THE REPO OF ROT</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
-        :root { --bg: #050505; --term-green: #39ff14; --err-red: #ff003c; }
+        :root { --bg: #050505; --term-green: #39ff14; --err-red: #ff003c; --panel: #111; }
         body { background: var(--bg); color: var(--term-green); font-family: 'Courier New', monospace; padding: 2rem; max-width: 1200px; margin: 0 auto; }
         
-        header { border-bottom: 2px solid var(--term-green); padding-bottom: 1rem; margin-bottom: 2rem; }
+        /* HEADER & CONTROLS */
+        header { border-bottom: 2px solid var(--term-green); padding-bottom: 1rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;}
+        
+        .controls { background: var(--panel); padding: 1.5rem; margin-bottom: 2rem; border: 1px solid #333; }
+        .input-group { display: flex; gap: 10px; margin-top: 10px; }
+        
+        input[type="text"] {
+            flex-grow: 1; background: #000; border: 1px solid #555; color: white; padding: 10px; font-family: inherit;
+        }
+        
+        button {
+            background: #000; border: 1px solid var(--term-green); color: var(--term-green);
+            padding: 10px 20px; cursor: pointer; font-family: inherit; text-transform: uppercase; font-weight: bold;
+            transition: 0.2s;
+        }
+        button:hover { background: var(--term-green); color: black; }
+        button:disabled { border-color: #555; color: #555; cursor: not-allowed; }
+
+        /* GALLERY GRID */
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; }
         
-        .card { border: 1px solid #333; padding: 1rem; position: relative; overflow: hidden; background: #0a0a0a; transition: 0.2s; }
+        .card { border: 1px solid #333; padding: 1rem; background: #0a0a0a; transition: 0.2s; position: relative; }
         .card:hover { border-color: var(--term-green); }
 
         .content-img { width: 100%; height: 200px; object-fit: cover; filter: grayscale(100%); }
-        .content-text { font-size: 0.9rem; line-height: 1.4; min-height: 100px; }
+        .content-text { font-size: 0.9rem; line-height: 1.4; min-height: 100px; overflow-wrap: break-word; }
 
         /* DECAY CLASSES */
         .decay-1 { filter: blur(1px) grayscale(50%); opacity: 0.9; }
@@ -25,39 +44,108 @@
 
         .meta { font-size: 0.7rem; color: #666; margin-top: 1rem; display: flex; justify-content: space-between; }
         
-        .btn-heal {
-            background: #111; border: 1px solid var(--term-green); color: var(--term-green);
-            padding: 5px; cursor: pointer; font-family: inherit; margin-top: 10px; width: 100%;
-        }
-        .btn-heal:hover { background: var(--term-green); color: black; }
+        .btn-heal { margin-top: 10px; width: 100%; font-size: 0.8rem; }
         
-        .instructions { background: #111; padding: 1rem; margin-bottom: 2rem; font-size: 0.8rem; }
+        #status-msg { margin-top: 10px; font-size: 0.8rem; color: #aaa; }
     </style>
 </head>
 <body>
     <header>
-        <h1>> ARCHIVE_STATUS: <span style="animation: blink 1s infinite">DECAYING</span></h1>
+        <div>
+            <h1>> REPO_OF_ROT</h1>
+            <small>STATUS: <span style="animation: blink 1s infinite">DECAYING</span></small>
+        </div>
+        <button id="btn-connect" onclick="connectWallet()">[ CONNECT WALLET ]</button>
     </header>
 
-    <div class="instructions">
-        <p>> <strong>TO POST:</strong> Send 0.02 AVAX to <code>0x52df...1e4e</code>. Include your text (or Image URL) in the "Hex Data" field of the transaction.</p>
-        <p>> <strong>TO HEAL:</strong> Send 0.01 AVAX. Include the ITEM ID (Tx Hash) in the "Hex Data" to heal a specific item, or leave empty to heal the most damaged item.</p>
+    <div class="controls">
+        <label>> UPLOAD TO ARCHIVE (Cost: 0.02 AVAX)</label>
+        <div class="input-group">
+            <input type="text" id="post-content" placeholder="Enter text or Image URL...">
+            <button onclick="submitPost()">POST</button>
+        </div>
+        <div id="status-msg"></div>
     </div>
 
     <div id="gallery" class="grid"></div>
 
     <script>
-        // CSS for Zalgo/Glitch Text effect
-        const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+        const TREASURY_ADDRESS = "0x52dffcd5a5e817d6f2529d77b48ab63c9b2a1e4e";
+        const COST_POST = "0.02";
+        const COST_HEAL = "0.01";
+        let provider, signer;
 
+        // --- WALLET LOGIC ---
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    await provider.send("eth_requestAccounts", []);
+                    signer = provider.getSigner();
+                    const address = await signer.getAddress();
+                    document.getElementById('btn-connect').innerText = `[ ${address.substring(0,6)}... ]`;
+                    document.getElementById('status-msg').innerText = "> WALLET CONNECTED";
+                } catch (error) {
+                    console.error(error);
+                    alert("Connection failed.");
+                }
+            } else {
+                alert("Please install Metamask or Core Wallet!");
+            }
+        }
+
+        async function submitPost() {
+            if (!signer) return alert("Please connect wallet first.");
+            
+            const content = document.getElementById('post-content').value;
+            if (!content) return alert("Content cannot be empty.");
+
+            // Convert string to Hex
+            const hexData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content));
+
+            try {
+                document.getElementById('status-msg').innerText = "> SIGNING TRANSACTION...";
+                const tx = await signer.sendTransaction({
+                    to: TREASURY_ADDRESS,
+                    value: ethers.utils.parseEther(COST_POST),
+                    data: hexData 
+                });
+                document.getElementById('status-msg').innerHTML = `> TX SENT! <a href="https://snowtrace.io/tx/${tx.hash}" target="_blank" style="color:white">VIEW</a>. WAIT FOR NEXT DECAY CYCLE.`;
+                document.getElementById('post-content').value = "";
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status-msg').innerText = "> ERROR: " + err.message;
+            }
+        }
+
+        async function healItem(id) {
+            if (!signer) return alert("Please connect wallet first.");
+            
+            // Convert ID (Tx Hash) to Hex (It is already hex, but we need to ensure it fits data field correctly)
+            // Ideally we just pass the ID string as UTF8 so the python script reads it literally
+            const hexData = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(id));
+
+            try {
+                const tx = await signer.sendTransaction({
+                    to: TREASURY_ADDRESS,
+                    value: ethers.utils.parseEther(COST_HEAL),
+                    data: hexData
+                });
+                alert("Heal signal sent! Check Snowtrace: " + tx.hash);
+            } catch (err) {
+                console.error(err);
+                alert("Transaction failed.");
+            }
+        }
+
+        // --- DECAY ENGINE LOGIC ---
+        const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
         function applyTextRot(text, entropy) {
             if (entropy < 5) return text;
             if (entropy > 23) return "01000100 01000101 01000001 01000100"; // DEAD
             
             let split = text.split('');
-            // The higher the entropy, the more chars we replace
-            let corruptionLevel = entropy * 2; // Percentage chance
-            
+            let corruptionLevel = entropy * 2; 
             return split.map(char => {
                 if (Math.random() * 100 < corruptionLevel) {
                     return glitchChars[Math.floor(Math.random() * glitchChars.length)];
@@ -67,47 +155,48 @@
         }
 
         async function loadEntropy() {
-            const response = await fetch('data/db.json');
-            const data = await response.json();
-            const container = document.getElementById('gallery');
+            try {
+                const response = await fetch('data/db.json');
+                if (!response.ok) throw new Error("Database not found");
+                const data = await response.json();
+                const container = document.getElementById('gallery');
 
-            // Show newest first
-            data.reverse().forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'card';
-                
-                // Visual Decay Logic
-                let cssClass = '';
-                if (item.entropy > 5) cssClass = 'decay-1';
-                if (item.entropy > 12) cssClass = 'decay-2';
-                if (item.entropy > 18) cssClass = 'decay-3';
-                if (item.status === 'dead') cssClass = 'dead';
-                
-                div.classList.add(cssClass);
+                data.reverse().forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'card';
+                    
+                    let cssClass = '';
+                    if (item.entropy > 5) cssClass = 'decay-1';
+                    if (item.entropy > 12) cssClass = 'decay-2';
+                    if (item.entropy > 18) cssClass = 'decay-3';
+                    if (item.status === 'dead') cssClass = 'dead';
+                    div.classList.add(cssClass);
 
-                // Content Rendering
-                let contentHtml = '';
-                if (item.type === 'image') {
-                    // Apply CSS filters to image based on entropy
-                    let imgStyle = `filter: blur(${item.entropy/2}px) grayscale(${item.entropy*4}%)`;
-                    contentHtml = `<img src="${item.content}" class="content-img" style="${imgStyle}" onerror="this.src='https://placehold.co/400x200?text=BROKEN_LINK'">`;
-                } else {
-                    contentHtml = `<div class="content-text">${applyTextRot(item.content, item.entropy)}</div>`;
-                }
+                    let contentHtml = '';
+                    if (item.type === 'image') {
+                        let imgStyle = `filter: blur(${item.entropy/2}px) grayscale(${item.entropy*4}%)`;
+                        contentHtml = `<img src="${item.content}" class="content-img" style="${imgStyle}" onerror="this.src='https://placehold.co/400x200?text=BROKEN_LINK'">`;
+                    } else {
+                        contentHtml = `<div class="content-text">${applyTextRot(item.content, item.entropy)}</div>`;
+                    }
 
-                div.innerHTML = `
-                    ${contentHtml}
-                    <div class="meta">
-                        <span>ENTROPY: ${item.entropy}/24</span>
-                        <span>${item.status}</span>
-                    </div>
-                    ${item.status !== 'dead' ? 
-                        `<button class="btn-heal" onclick="prompt('Copy this ID into your Wallet Memo/Data to heal:', '${item.id}')">GET ID TO HEAL</button>` 
-                        : '<button disabled class="btn-heal" style="border-color:red; color:red">LOST FOREVER</button>'}
-                    <div style="font-size:0.5rem; color:#444; margin-top:5px">${item.id.substring(0,10)}...</div>
-                `;
-                container.appendChild(div);
-            });
+                    div.innerHTML = `
+                        ${contentHtml}
+                        <div class="meta">
+                            <span>ENTROPY: ${item.entropy}/24</span>
+                            <span>${item.status}</span>
+                        </div>
+                        ${item.status !== 'dead' ? 
+                            `<button class="btn-heal" onclick="healItem('${item.id}')">HEAL [0.01 AVAX]</button>` 
+                            : '<button disabled class="btn-heal" style="border-color:red; color:red">LOST FOREVER</button>'}
+                        <div style="font-size:0.5rem; color:#444; margin-top:5px">${item.id.substring(0,10)}...</div>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                console.error(e);
+                document.getElementById('gallery').innerHTML = "<p>> SYSTEM_READY. WAITING FOR DATA...</p>";
+            }
         }
         loadEntropy();
     </script>

@@ -1,0 +1,41 @@
+name: The Entropy Engine
+
+on:
+  schedule:
+    # Runs at minute 0 of every hour
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allows manual trigger for testing
+
+permissions:
+  contents: write
+
+jobs:
+  decay_and_heal:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests web3
+
+      - name: Run Entropy Script
+        env:
+          # We hardcode your public wallet in the script, but if you add an API key later:
+          SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
+        run: python scripts/engine.py
+
+      - name: Commit Decay
+        run: |
+          git config --global user.name "Entropy Bot"
+          git config --global user.email "bot@entropy.void"
+          git add data/db.json
+          # Only commit if changes exist
+          git diff --quiet && git diff --staged --quiet || (git commit -m "ENTROPY_UPDATE: Decay cycle complete" && git push)

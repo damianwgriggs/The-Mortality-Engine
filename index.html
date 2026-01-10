@@ -3,35 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE REPO OF ROT</title>
+    <title>THE MORTALITY ENGINE (FUJI MODE)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
-        /* THE DARK MODE AESTHETIC */
         @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
-        
-        body { 
-            background-color: #050505; 
-            color: #39ff14; 
-            font-family: 'Courier Prime', monospace; 
-        }
-
-        /* Custom Scrollbar */
+        body { background-color: #050505; color: #39ff14; font-family: 'Courier Prime', monospace; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #111; }
         ::-webkit-scrollbar-thumb { background: #333; }
         ::-webkit-scrollbar-thumb:hover { background: #39ff14; }
-
-        /* Utility Classes for the Cyberpunk feel */
         .term-border { border: 1px solid #333; }
-        .term-border:hover { border-color: #39ff14; }
-        .btn-cyber { 
-            background: #000; border: 1px solid #39ff14; color: #39ff14; 
-            text-transform: uppercase; font-weight: bold; transition: all 0.2s;
-        }
+        .btn-cyber { background: #000; border: 1px solid #39ff14; color: #39ff14; text-transform: uppercase; font-weight: bold; transition: all 0.2s; }
         .btn-cyber:hover:not(:disabled) { background: #39ff14; color: #000; box-shadow: 0 0 10px #39ff14; }
         .btn-cyber:disabled { border-color: #555; color: #555; cursor: not-allowed; }
-        
         .decay-1 { filter: blur(1px) grayscale(50%); opacity: 0.9; }
         .decay-2 { filter: blur(3px) contrast(150%) hue-rotate(45deg); opacity: 0.7; }
         .decay-3 { filter: blur(6px) invert(100%); opacity: 0.4; }
@@ -42,14 +27,12 @@
 
     <div class="w-full max-w-6xl mb-8 flex flex-col md:flex-row justify-between items-center border-b-2 border-[#39ff14] pb-4">
         <div>
-            <h1 class="text-3xl font-bold tracking-tighter">> REPO_OF_ROT</h1>
+            <h1 class="text-3xl font-bold tracking-tighter">> MORTALITY_ENGINE <span class="text-xs align-top text-yellow-400">[FUJI TESTNET]</span></h1>
             <p class="text-xs text-gray-500 mt-1">STATUS: <span class="animate-pulse text-red-500">DECAYING</span></p>
         </div>
-        <div id="wallet-section" class="mt-4 md:mt-0">
-            <button id="connectButton" class="btn-cyber px-6 py-2 rounded-none">
-                [ CONNECT WALLET ]
-            </button>
-            <p id="accountAddress" class="text-xs text-right mt-1 text-gray-500 hidden"></p>
+        <div id="wallet-section" class="mt-4 md:mt-0 text-right">
+            <button id="connectButton" class="btn-cyber px-6 py-2 rounded-none">[ CONNECT WALLET ]</button>
+            <p id="accountAddress" class="text-xs mt-1 text-gray-500 hidden"></p>
         </div>
     </div>
 
@@ -57,53 +40,40 @@
         <div class="flex flex-col gap-4">
             <label class="text-sm text-gray-400">> UPLOAD MEMORY (COST: 0.02 AVAX)</label>
             <div class="flex flex-col md:flex-row gap-4">
-                <input type="text" id="postContent" placeholder="Enter text or Image URL..." 
-                    class="flex-grow bg-black border border-[#555] text-white p-3 focus:outline-none focus:border-[#39ff14] font-mono">
-                <button id="postButton" class="btn-cyber px-8 py-3 disabled:opacity-50">
-                    INITIATE UPLOAD
-                </button>
+                <input type="text" id="postContent" placeholder="Enter text or Image URL..." class="flex-grow bg-black border border-[#555] text-white p-3 focus:outline-none focus:border-[#39ff14] font-mono">
+                <button id="postButton" class="btn-cyber px-8 py-3 disabled:opacity-50">INITIATE UPLOAD</button>
             </div>
             <div id="statusMessage" class="text-xs min-h-[20px] text-gray-400"></div>
         </div>
     </div>
 
     <div id="gallery" class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="text-center col-span-full py-20 text-gray-600 animate-pulse">
-            > CONNECTING TO DATABASE...
-        </div>
+        <div class="text-center col-span-full py-20 text-gray-600 animate-pulse">> SYNCING WITH ENTROPY...</div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        const RECIPIENT_ADDRESS = "0x52dffcd5a5e817d6f2529d77b48ab63c9b2a1e4e"; // Your Wallet
-        // Avalanche C-Chain Mainnet ID (0xa86a)
-        const AVALANCHE_CHAIN_ID = '0xa86a'; 
-        const AVALANCHE_RPC_URL = 'https://api.avax.network/ext/bc/C/rpc';
+        // --- CONFIGURATION (FUJI TESTNET) ---
+        const RECIPIENT_ADDRESS = "0x52dffcd5a5e817d6f2529d77b48ab63c9b2a1e4e"; 
+        const AVALANCHE_CHAIN_ID = '0xa869'; // Fuji Testnet ID
+        const AVALANCHE_RPC_URL = 'https://api.avax-test.network/ext/bc/C/rpc';
         
         const COST_POST = "0.02";
         const COST_HEAL = "0.01";
 
-        // --- STATE ---
         let currentAccount = null;
         let provider, signer;
 
-        // --- DOM ELEMENTS ---
         const connectBtn = document.getElementById('connectButton');
         const postBtn = document.getElementById('postButton');
         const postInput = document.getElementById('postContent');
         const statusMsg = document.getElementById('statusMessage');
         const addressDisplay = document.getElementById('accountAddress');
 
-        // --- EVENT LISTENERS ---
         connectBtn.addEventListener('click', connectWallet);
         postBtn.addEventListener('click', () => makeTransaction('post'));
 
-        // --- CORE FUNCTIONS ---
-
         async function connectWallet() {
-            if (typeof window.ethereum === 'undefined') {
-                return updateStatus('MetaMask/Core not installed.', true);
-            }
+            if (typeof window.ethereum === 'undefined') return updateStatus('MetaMask not installed.', true);
             try {
                 updateStatus('Connecting...', false);
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -123,13 +93,10 @@
                 currentAccount = accounts[0];
                 connectBtn.innerText = "[ CONNECTED ]";
                 connectBtn.disabled = true;
-                addressDisplay.innerText = `ID: ${currentAccount.substring(0, 6)}...${currentAccount.substring(currentAccount.length - 4)}`;
+                addressDisplay.innerText = `USER: ${currentAccount.substring(0, 6)}...`;
                 addressDisplay.classList.remove('hidden');
-                
-                // Initialize Ethers Provider
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
-                
                 updateStatus('System Online. Ready for Input.', false);
             }
         }
@@ -137,22 +104,23 @@
         async function checkAndSwitchNetwork() {
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
             if (chainId !== AVALANCHE_CHAIN_ID) {
-                updateStatus('Switching to Avalanche C-Chain...', true);
+                updateStatus('Switching to Fuji Testnet...', true);
                 try {
                     await window.ethereum.request({
                         method: 'wallet_switchEthereumChain',
                         params: [{ chainId: AVALANCHE_CHAIN_ID }],
                     });
                 } catch (switchError) {
-                    // This error code indicates that the chain has not been added to MetaMask.
                     if (switchError.code === 4902) {
                         try {
                             await window.ethereum.request({
                                 method: 'wallet_addEthereumChain',
                                 params: [{
                                     chainId: AVALANCHE_CHAIN_ID,
-                                    chainName: 'Avalanche Mainnet C-Chain',
+                                    chainName: 'Avalanche Fuji Testnet',
                                     rpcUrls: [AVALANCHE_RPC_URL],
+                                    nativeCurrency: { name: 'Avalanche', symbol: 'AVAX', decimals: 18 },
+                                    blockExplorerUrls: ['https://testnet.snowtrace.io/']
                                 }],
                             });
                         } catch (addError) {
@@ -168,47 +136,36 @@
         async function makeTransaction(type, itemId = null) {
             if (!currentAccount) return updateStatus('Please connect wallet first.', true);
             
-            let valueEth, dataHex;
+            // SECURITY CHECK: PREVENT SELF-TRANSFER
+            if (currentAccount.toLowerCase() === RECIPIENT_ADDRESS.toLowerCase()) {
+                return updateStatus("ERROR: You are logged in as the Treasury. Switch to a different 'Tester' account in MetaMask.", true);
+            }
 
+            let valueEth, dataHex;
             if (type === 'post') {
                 const content = postInput.value.trim();
                 if (!content) return updateStatus('Input cannot be empty.', true);
-                
                 valueEth = COST_POST;
-                // Convert text string to Hex for the 'data' field
                 dataHex = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(content));
                 updateStatus('Preparing Upload...', false);
-            } 
-            else if (type === 'heal') {
+            } else if (type === 'heal') {
                 valueEth = COST_HEAL;
-                // The item ID (hash) is already hex, usually. If it's 0x..., use as is. 
-                // But to be safe and match the python decoder, let's treat it as a string we encode.
                 dataHex = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(itemId));
-                updateStatus(`Healing Memory ${itemId.substring(0,6)}...`, false);
+                updateStatus(`Healing Memory...`, false);
             }
 
             try {
-                // Construct the Transaction
                 const txParams = {
                     to: RECIPIENT_ADDRESS,
-                    value: ethers.utils.parseEther(valueEth), // Handles the 18 decimals automatically
+                    value: ethers.utils.parseEther(valueEth),
                     data: dataHex
                 };
-
-                // Send via Ethers Signer (Standard EIP-1193 way)
                 const txResponse = await signer.sendTransaction(txParams);
-                
-                updateStatus(`Signal Sent! TX: ${txResponse.hash.substring(0,10)}... (Wait for next cycle)`, false);
-                
-                if(type === 'post') postInput.value = ''; // Clear input
-
+                updateStatus(`Signal Sent! TX: ${txResponse.hash.substring(0,10)}...`, false);
+                if(type === 'post') postInput.value = '';
             } catch (error) {
                 console.error(error);
-                if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
-                    updateStatus('Transaction rejected by user.', true);
-                } else {
-                    updateStatus(`Error: ${error.message || "Unknown Error"}`, true);
-                }
+                updateStatus(`Error: ${error.message.substring(0, 40)}...`, true);
             }
         }
 
@@ -217,17 +174,15 @@
             statusMsg.className = isError ? "text-red-500 text-xs mt-2" : "text-[#39ff14] text-xs mt-2";
         }
 
-        // --- LOAD GALLERY ---
+        // --- GALLERY RENDERER ---
         const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
         function applyTextRot(text, entropy) {
             if (entropy < 5) return text;
-            if (entropy > 23) return "01000100 01000101 01000001 01000100"; // DEAD
+            if (entropy > 23) return "01000100 01000101 01000001 01000100"; 
             let split = text.split('');
             let corruptionLevel = entropy * 2; 
             return split.map(char => {
-                if (Math.random() * 100 < corruptionLevel) {
-                    return glitchChars[Math.floor(Math.random() * glitchChars.length)];
-                }
+                if (Math.random() * 100 < corruptionLevel) { return glitchChars[Math.floor(Math.random() * glitchChars.length)]; }
                 return char;
             }).join('');
         }
@@ -238,60 +193,36 @@
                 if (!response.ok) throw new Error("Database offline");
                 const data = await response.json();
                 const container = document.getElementById('gallery');
-                container.innerHTML = ''; // Clear loading state
+                container.innerHTML = ''; 
 
                 data.reverse().forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'term-border p-4 bg-[#0a0a0a] relative overflow-hidden transition-all duration-300';
-                    
-                    // Visual Decay Classes
                     let cssClass = '';
                     if (item.entropy > 5) cssClass = 'decay-1';
                     if (item.entropy > 12) cssClass = 'decay-2';
                     if (item.entropy > 18) cssClass = 'decay-3';
                     if (item.status === 'dead') cssClass = 'dead';
-                    div.classList.add(cssClass);
+                    if (cssClass) div.classList.add(cssClass);
 
-                    // Content Rendering
-                    let contentHtml = '';
-                    if (item.type === 'image') {
-                        let imgStyle = `filter: blur(${item.entropy/2}px) grayscale(${item.entropy*4}%)`;
-                        contentHtml = `<img src="${item.content}" class="w-full h-48 object-cover mb-4 border border-[#333]" style="${imgStyle}" onerror="this.src='https://placehold.co/400x200/000/39ff14?text=BROKEN_LINK'">`;
-                    } else {
-                        contentHtml = `<div class="font-mono text-sm mb-4 min-h-[80px] break-words">${applyTextRot(item.content, item.entropy)}</div>`;
-                    }
+                    let contentHtml = item.type === 'image' 
+                        ? `<img src="${item.content}" class="w-full h-48 object-cover mb-4 border border-[#333]" style="filter: blur(${item.entropy/2}px) grayscale(${item.entropy*4}%)" onerror="this.src='https://placehold.co/400x200/000/39ff14?text=BROKEN_LINK'">`
+                        : `<div class="font-mono text-sm mb-4 min-h-[80px] break-words">${applyTextRot(item.content, item.entropy)}</div>`;
 
-                    // Button Logic
-                    let btnHtml = '';
-                    if (item.status !== 'dead') {
-                        btnHtml = `<button onclick="makeTransaction('heal', '${item.id}')" class="w-full border border-[#333] hover:bg-[#39ff14] hover:text-black text-[10px] py-1 transition-colors uppercase">
-                            [ HEAL MEMORY (0.01) ]
-                        </button>`;
-                    } else {
-                        btnHtml = `<div class="text-center text-red-500 text-xs border border-red-900 py-1">[ LOST FOREVER ]</div>`;
-                    }
+                    let btnHtml = item.status !== 'dead' 
+                        ? `<button onclick="makeTransaction('heal', '${item.id}')" class="w-full border border-[#333] hover:bg-[#39ff14] hover:text-black text-[10px] py-1 transition-colors uppercase">[ HEAL MEMORY (0.01) ]</button>` 
+                        : `<div class="text-center text-red-500 text-xs border border-red-900 py-1">[ LOST FOREVER ]</div>`;
 
-                    div.innerHTML = `
-                        ${contentHtml}
-                        <div class="flex justify-between items-center text-[10px] text-gray-500 mb-2 font-mono">
-                            <span>ENTROPY: ${item.entropy}/24</span>
-                            <span>ID: ${item.id.substring(0,6)}</span>
-                        </div>
-                        ${btnHtml}
-                    `;
+                    div.innerHTML = `${contentHtml}<div class="flex justify-between items-center text-[10px] text-gray-500 mb-2 font-mono"><span>ENTROPY: ${item.entropy}/24</span><span>ID: ${item.id.substring(0,6)}</span></div>${btnHtml}`;
                     container.appendChild(div);
                 });
             } catch (e) {
-                console.error(e);
                 document.getElementById('gallery').innerHTML = `<div class="col-span-full text-center text-red-500">> ERROR: ${e.message}</div>`;
             }
         }
         
-        // Init
         loadEntropy();
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', handleAccountsChanged);
-        }
+        if (window.ethereum) window.ethereum.on('accountsChanged', handleAccountsChanged);
     </script>
 </body>
 </html>

@@ -7,9 +7,9 @@ from datetime import datetime
 
 # --- CONFIGURATION ---
 DB_PATH = 'data/db.json'
-# Your OLD wallet (The Treasury) that receives the funds
+# Your Treasury Address
 WALLET_ADDRESS = "0x43CAF8c948235Ed5e08608D5A7642910E3f82Fb9" 
-SNOWTRACE_API_KEY = os.environ.get('SNOWTRACE_API_KEY') # Optional
+SNOWTRACE_API_KEY = os.environ.get('SNOWTRACE_API_KEY') 
 
 # Game Rules
 COST_POST = 0.02 # AVAX 
@@ -20,7 +20,6 @@ MAX_ENTROPY = 24
 # --- UTILS ---
 
 def load_db():
-    # Strict loading to prevent JSON errors
     try:
         if not os.path.exists(DB_PATH):
             return []
@@ -34,7 +33,6 @@ def load_db():
         return []
 
 def save_db(data):
-    # Overwrite mode 'w' guarantees valid JSON structure
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with open(DB_PATH, 'w') as f:
         json.dump(data, f, indent=2)
@@ -48,11 +46,13 @@ def decode_input_data(input_hex):
         return None
 
 def fetch_transactions():
-    """Fetches transactions from FUJI Snowtrace."""
+    """Fetches transactions using Routescan (Reliable Fuji API)."""
     print(f"Fetching transactions for {WALLET_ADDRESS} on Fuji...")
     
-    # NOTE: Using api-testnet.snowtrace.io
-    url = "https://api-testnet.snowtrace.io/api"
+    # --- THE FIX: Using Routescan's Etherscan-Compatible Endpoint for Fuji ---
+    # Chain ID 43113 = Fuji
+    url = "https://api.routescan.io/v2/network/testnet/evm/43113/etherscan/api"
+    
     params = {
         "module": "account",
         "action": "txlist",
@@ -71,12 +71,21 @@ def fetch_transactions():
     
     try:
         r = requests.get(url, params=params, headers=headers)
+        
+        # Debugging: Print the raw status code to the logs
+        print(f"API Status Code: {r.status_code}")
+        
         data = r.json()
+        
+        # Routescan/Etherscan uses status "1" for success
         if data['status'] == '1':
+            print(f"Found {len(data['result'])} transactions.")
             return data['result']
         else:
-            print(f"API Info: {data.get('message', 'No result')}")
+            print(f"API Message: {data.get('message', 'No result')}")
+            # If message is "No transactions found", that's fine.
             return []
+            
     except Exception as e:
         print(f"Network Error: {e}")
         return []
@@ -103,10 +112,16 @@ def main():
     txs = fetch_transactions()
     
     existing_ids = [item.get('id') for item in db]
-    txs.reverse() # Process oldest first
+    # We process oldest to newest to maintain timeline order
+    txs.reverse() 
 
     for tx in txs:
         tx_hash = tx['hash']
+        
+        # Skip if already processed
+        if tx_hash in existing_ids:
+            continue
+
         value_wei = int(tx['value'])
         value_avax = value_wei / 10**18
         input_data = tx['input']
@@ -114,20 +129,19 @@ def main():
         
         # LOGIC: POST ($0.02)
         if abs(value_avax - COST_POST) < TOLERANCE:
-            if tx_hash not in existing_ids:
-                if decoded_msg:
-                    print(f"NEW POST FOUND: {decoded_msg[:20]}...")
-                    msg_type = "image" if decoded_msg.startswith("http") else "text"
-                    new_post = {
-                        "id": tx_hash, 
-                        "content": decoded_msg,
-                        "type": msg_type,
-                        "entropy": 0,
-                        "last_healed_ts": int(time.time()),
-                        "status": "alive"
-                    }
-                    db.append(new_post)
-                    existing_ids.append(tx_hash)
+            if decoded_msg:
+                print(f"NEW POST FOUND: {decoded_msg[:20]}...")
+                msg_type = "image" if decoded_msg.startswith("http") else "text"
+                new_post = {
+                    "id": tx_hash, 
+                    "content": decoded_msg,
+                    "type": msg_type,
+                    "entropy": 0,
+                    "last_healed_ts": int(time.time()),
+                    "status": "alive"
+                }
+                db.append(new_post)
+                existing_ids.append(tx_hash)
 
         # LOGIC: HEAL ($0.01)
         elif abs(value_avax - COST_HEAL) < TOLERANCE:
